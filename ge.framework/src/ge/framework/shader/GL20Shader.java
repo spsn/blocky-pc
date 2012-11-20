@@ -15,7 +15,7 @@ public class GL20Shader
 	protected static ByteBuffer fileBuffer = BufferUtils.createByteBuffer(1024 * 10);
 
 	private int type;
-	private int ID;
+	private int id;
 
 	public GL20Shader() {
 	}
@@ -24,8 +24,8 @@ public class GL20Shader
 		createFromSource(type, source);
 	}
 
-	public int getID() {
-		return ID;
+	public int getId() {
+		return id;
 	}
 
 	public int getType() {
@@ -33,11 +33,11 @@ public class GL20Shader
 	}
 
 	public void destroy() {
-		if ( ID == 0 )
+		if ( id == 0 )
 			throw new IllegalStateException("The shader has not been created");
 
-		GL20.glDeleteShader(ID);
-		ID = 0;
+		GL20.glDeleteShader(id);
+		id = 0;
 	}
 
 	public void createFromFile(final int type, final ClassLoader loader, final String file) throws IOException {
@@ -66,17 +66,17 @@ public class GL20Shader
 	}
 
 	public void createFromSource(final int type, final CharSequence source) {
-		if ( ID != 0 )
+		if ( id != 0 )
 			throw new IllegalStateException("The shader has already been created");
 
 		this.type = type;
-		this.ID = GL20.glCreateShader(type);
+		this.id = GL20.glCreateShader(type);
 
-		GL20.glShaderSource(ID, source);
+		GL20.glShaderSource(id, source);
 
-		GL20.glCompileShader(ID);
+		GL20.glCompileShader(id);
 
-		if ( GL20.glGetShader(ID, GL20.GL_COMPILE_STATUS) == GL11.GL_FALSE ) {
+		if ( GL20.glGetShader(id, GL20.GL_COMPILE_STATUS) == GL11.GL_FALSE ) {
 			printInfoLog();
 			destroy();
 			throw new RuntimeException("A compilation error occured in a shader.");
@@ -84,16 +84,16 @@ public class GL20Shader
 	}
 
 	public void printInfoLog() {
-		if ( ID == 0 )
+		if ( id == 0 )
 			throw new IllegalStateException("The shader has not been created");
 
-		final int logLength = GL20.glGetShader(ID, GL20.GL_INFO_LOG_LENGTH);
+		final int logLength = GL20.glGetShader(id, GL20.GL_INFO_LOG_LENGTH);
 		if ( logLength <= 1 )
 			return;
 
-		System.out.println("\nInfo Log of Shader Object: " + ID);
+		System.out.println("\nInfo Log of Shader Object: " + id);
 		System.out.println("--------------------------");
-		System.out.println(GL20.glGetShaderInfoLog(ID, logLength));
+		System.out.println(GL20.glGetShaderInfoLog(id, logLength));
 	}
 
 }
