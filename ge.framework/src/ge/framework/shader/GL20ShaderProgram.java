@@ -12,7 +12,7 @@ public class GL20ShaderProgram
 		this.ID = GL20.glCreateProgram();
 
 		for ( GL20Shader shader : shaders )
-			GL20.glAttachShader(ID, shader.getID());
+			GL20.glAttachShader(ID, shader.getId());
 
 				GL20.glLinkProgram(ID);
 

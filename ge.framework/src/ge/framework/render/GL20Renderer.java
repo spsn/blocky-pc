@@ -16,9 +16,10 @@ import org.lwjgl.opengl.GL20;
 import org.lwjgl.util.vector.Matrix4f;
 import org.lwjgl.util.vector.Vector3f;
 import org.lwjgl.util.vector.Vector4f;
+import org.newdawn.slick.opengl.Texture;
 
 /**
- * Represents a renderer for OpenGL ES 2.0.
+ * Represents a renderer for OpenGL 2.0.
  */
 public class GL20Renderer extends Renderer
 {
@@ -55,15 +56,8 @@ public class GL20Renderer extends Renderer
 	// Model view projection matrix buffer
 	private java.nio.FloatBuffer mvpMatrixBuffer;
 
-	// Profiler
-	public Profiler profiler;
-
 	//TODO
 	private int visBatchCount;
-
-	//TODO
-	private int eventSwivel;
-	private boolean eventsReady;
 
 	/**
 	 * Constructor.
@@ -89,9 +83,6 @@ public class GL20Renderer extends Renderer
 
 		//TODO
 		mvpMatrixBuffer = BufferUtils.createFloatBuffer(16);
-
-		// Create profiler
-		profiler = new Profiler();
 	}
 
 	//TODO
@@ -124,9 +115,9 @@ public class GL20Renderer extends Renderer
 		Mouse.setGrabbed(true);
 
 		// Set display mode
-		displayMode = Display.getDesktopDisplayMode();
+//		displayMode = Display.getDesktopDisplayMode();
 //		displayMode = new DisplayMode(1280, 720);
-//		displayMode = new DisplayMode(800, 450);
+		displayMode = new DisplayMode(800, 450);
 //		displayMode = new DisplayMode(320, 200);
 		Display.setDisplayMode(displayMode);
 
@@ -134,7 +125,7 @@ public class GL20Renderer extends Renderer
 		Display.setInitialBackground(backgroundColor.getRed(), backgroundColor.getGreen(), backgroundColor.getBlue());
 
 		//TODO
-		Display.setVSyncEnabled(true);
+		Display.setVSyncEnabled(waitForVsync);
 		Display.setFullscreen(true);
 
 		// Create display
@@ -300,6 +291,7 @@ public class GL20Renderer extends Renderer
 		// Rotate view to camera orientation
 		Matrix.glRotatef(camera.getYaw(), 1.0f, 0.0f, 0.0f);
 		Matrix.glRotatef(camera.getPitch(), 0.0f, 1.0f, 0.0f);
+//TODO		System.out.println("------------------------------>>> " + camera.getPitch());
 
 		// Move view to camera position
 		Matrix.glTranslatef(camera.getPositionX(), camera.getPositionY(), camera.getPositionZ());
@@ -330,37 +322,17 @@ public class GL20Renderer extends Renderer
 		if (texture != null)
 		{
 			// Bind texture
-			texture.bind();
-			GL11.glTexParameterf(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
-			GL11.glTexParameterf(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-//			GL11.glTexEnvf(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE, GL11.GL_REPLACE);
-//			GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
-//			GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
-//			GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL14.GL_GENERATE_MIPMAP, GL11.GL_TRUE);
-//			GL11.glTexParameterf(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST_MIPMAP_NEAREST);
-//			GL11.glTexParameterf(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST_MIPMAP_NEAREST);
+			bindTexture(texture);
 		}
-
-		//TODO
-		profiler.measure(Profiler.BIND_TEXTURE);
 
 		//TODO
 		visBatchCount = 0;
 
 		// Disable alpha blending for opaque meshes
 		GL11.glDisable(GL11.GL_BLEND);
-		//TODO
-        // Disable lighting
-//		GL11.glDisable(GL11.GL_LIGHTING);
-		//TODO
-        // Disable dithering
-//		GL11.glDisable(GL11.GL_DITHER);
 
 		// Activate shader program for opaque meshes
-		opaqueProgram.activate();
-
-		//TODO
-		profiler.measure(Profiler.ACTIVATE_PROGRAM);
+		activateProgram(opaqueProgram);
 
 		// Set model view projection matrix in shader program
 		GL20.glUniformMatrix4(opaqueProgram.getMvpMatrixUniform(), false, mvpMatrixBuffer);
@@ -377,20 +349,11 @@ public class GL20Renderer extends Renderer
 			opaqueProgram.getVertexPositionAttribute(), opaqueProgram.getVertexNormalAttribute(),
 			opaqueProgram.getVertexColorAttribute(), opaqueProgram.getVertexTextureAttribute());
 
-		// Deactivate shader program for opaque meshes
-		opaqueProgram.deactivate();
-
-		//TODO
-		profiler.measure(Profiler.DEACTIVATE_PROGRAM);
-
 		// Scene contains model meshes?
 		if (modelMeshList.size() > 0)
 		{
 			// Activate shader program for model meshes
-			modelProgram.activate();
-
-			//TODO
-			profiler.measure(Profiler.ACTIVATE_PROGRAM);
+			activateProgram(modelProgram);
 
 			// Set model view projection matrix in shader program
 			GL20.glUniformMatrix4(modelProgram.getMvpMatrixUniform(), false, mvpMatrixBuffer);
@@ -406,27 +369,27 @@ public class GL20Renderer extends Renderer
 				modelProgram.getModelPositionUniform(), modelProgram.getModelRotationUniform(),
 				modelProgram.getVertexPositionAttribute(), modelProgram.getVertexNormalAttribute(),
 				modelProgram.getVertexColorAttribute(), modelProgram.getVertexTextureAttribute());
-
-			// Deactivate shader program for model meshes
-			modelProgram.deactivate();
-
-			//TODO
-			profiler.measure(Profiler.DEACTIVATE_PROGRAM);
 		}
 
 		// Scene contains transparent meshes?
 		if ((transparentMeshList.size() > 0)
 			|| (overlayMeshList.size() > 0))
 		{
+
+			//TODO - per mesh / per list
+			// Texture defined?
+			if (texture != null)
+			{
+				// Bind texture
+				bindTexture(texture);
+			}
+
 			// Enable alpha blending for transparent meshes
 			GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA); 
 			GL11.glEnable(GL11.GL_BLEND);
 
 			// Activate shader program for transparent meshes
-			transparentProgram.activate();
-
-			//TODO
-			profiler.measure(Profiler.ACTIVATE_PROGRAM);
+			activateProgram(transparentProgram);
 
 			//TODO - ifdef
 			// Set model view projection matrix in shader program
@@ -482,11 +445,6 @@ public class GL20Renderer extends Renderer
 					transparentProgram.getVertexColorAttribute(), transparentProgram.getVertexTextureAttribute());
 			}
 
-			// Deactivate shader program for transparent meshes
-			transparentProgram.deactivate();
-
-			//TODO
-			profiler.measure(Profiler.DEACTIVATE_PROGRAM);
 		}
 
 		//TODO
@@ -496,20 +454,7 @@ public class GL20Renderer extends Renderer
 //		GL11.glFlush();
 //		GL11.glFinish();
 		Display.update(false);
-
-		//TODO
-		if (eventSwivel == 0)
-		{
-			Display.processMessages();
-			eventsReady = true;
-		}
-		else
-		{
-			eventsReady = false;
-		}
-
-		//TODO
-		eventSwivel = (eventSwivel == 0) ? 0 : eventSwivel + 1;
+		Display.processMessages();
 
 		//TODO
 		profiler.measure(Profiler.SWAP_BUFFERS);
@@ -561,17 +506,12 @@ public class GL20Renderer extends Renderer
 		profiler.measure(Profiler.GET_MATRIX);
 
 		//TODO - per mesh / per list
-		// Bind texture
+		// Texture defined?
 		if (texture != null)
 		{
-			texture.bind();
+			// Bind texture
+			bindTexture(texture);
 		}
-
-		GL11.glTexParameterf(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
-		GL11.glTexParameterf(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-
-		//TODO
-		profiler.measure(Profiler.BIND_TEXTURE);
 
 		//TODO
 		visBatchCount = 0;
@@ -584,10 +524,7 @@ public class GL20Renderer extends Renderer
 //		GL11.glEnable(GL11.GL_BLEND);
 
 		// Activate shader program for transparent meshes
-		transparentProgram.activate();
-
-		//TODO
-		profiler.measure(Profiler.ACTIVATE_PROGRAM);
+		activateProgram(transparentProgram);
 
 		//TODO - ifdef
 		// Set orthogonal projection matrix in shader program
@@ -606,12 +543,6 @@ public class GL20Renderer extends Renderer
 			transparentProgram.getVertexPositionAttribute(), transparentProgram.getVertexNormalAttribute(),
 			transparentProgram.getVertexColorAttribute(), transparentProgram.getVertexTextureAttribute());
 
-		// Deactivate shader program for transparent meshes
-		transparentProgram.deactivate();
-
-		//TODO
-		profiler.measure(Profiler.DEACTIVATE_PROGRAM);
-
 		//TODO
 		counters.visBatchCount = visBatchCount;
 
@@ -619,7 +550,7 @@ public class GL20Renderer extends Renderer
 //		GL11.glFlush();
 //		GL11.glFinish();
 		Display.update(false);
-//		Display.processMessages();
+		Display.processMessages();
 
 		//TODO
 		profiler.measure(Profiler.SWAP_BUFFERS);
@@ -700,12 +631,7 @@ public class GL20Renderer extends Renderer
 				if (mesh.getTexture() != null)
 				{
 					// Bind texture
-					mesh.getTexture().bind();
-					GL11.glTexParameterf(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
-					GL11.glTexParameterf(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-
-					//TODO
-//					profiler.measure(Profiler.BIND_TEXTURE);
+					bindTexture(mesh.getTexture(), false);
 				}
 
 				//TODO - model position
@@ -796,6 +722,23 @@ public class GL20Renderer extends Renderer
 		profiler.measure(Profiler.DRAW_ELEMENTS);
 	}
 
+	/**
+	 * Set texture parameters.
+	 * @param texture The texture
+	 */
+	protected void setTextureParameters(
+		final Texture texture)
+	{
+		GL11.glTexParameterf(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+		GL11.glTexParameterf(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+//		GL11.glTexEnvf(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE, GL11.GL_REPLACE);
+//		GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
+//		GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
+//		GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL14.GL_GENERATE_MIPMAP, GL11.GL_TRUE);
+//		GL11.glTexParameterf(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST_MIPMAP_NEAREST);
+//		GL11.glTexParameterf(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST_MIPMAP_NEAREST);
+	}
+
 	//TODO
 	public Ray pick(
 		final float magnitude)
@@ -818,12 +761,6 @@ public class GL20Renderer extends Renderer
 		//TODO - picking
 
 		return new Ray(rayPosition, rayDirection);
-	}
-
-	//TODO
-	public boolean eventsReady()
-	{
-		return eventsReady;
 	}
 
 }
